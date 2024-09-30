@@ -1,0 +1,52 @@
+openapi: 3.0.1
+info:
+  title: 여의도형님 API
+  description: 여의도형님 API
+  version: "1.0"
+servers:
+- url: http://localhost:8080
+tags: []
+paths:
+  /oauth/token:
+    post:
+      tags:
+      - oauth
+      operationId: /yh/oauth/token
+      requestBody:
+        content:
+          application/json;charset=UTF-8:
+            schema:
+              $ref: '#/components/schemas/OAuthTokenRequest'
+            examples:
+              /yh/oauth/token:
+                value: "{\"provider\":\"kakao\",\"code\":\"58noWP5PNPdCTpzoPHLQ-wSQHTphBdhlll6Jm2eM7t242l8KB2BSKAAAAAQKPCRZAAABkif-qZTo6jj-qNQmaA\"\
+                  }"
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthTokenResponse'
+              examples:
+                /yh/oauth/token:
+                  value: "{\"accessToken\":\"accessToken\"}"
+components:
+  schemas:
+    OAuthTokenRequest:
+      title: OAuthTokenRequest
+      type: object
+      properties:
+        code:
+          type: string
+          description: OAUTH에서 인증받은 code
+        provider:
+          type: string
+          description: "OAUTH 제공업체 ex)kakao, naver"
+    OAuthTokenResponse:
+      title: OAuthTokenResponse
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: 사용자 ID

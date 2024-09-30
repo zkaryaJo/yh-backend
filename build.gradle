@@ -1,0 +1,137 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.3.3'
+    id 'io.spring.dependency-management' version '1.1.6'
+    id 'org.asciidoctor.jvm.convert' version '3.3.2'
+    id 'com.epages.restdocs-api-spec' version '0.18.2'   //REST API 문서 자동화를 위한 플러그인 (restdocs to open api spec)
+    id 'org.hidetake.swagger.generator' version '2.18.2' //REST API 문서 자동화를 위한 플러그인 (Swagger ui 생성)
+}
+
+group = 'com.tmaxfinai'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    set('snippetsDir', file("build/generated-snippets"))
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
+
+    //tomcat -> undertow
+    implementation 'org.springframework.boot:spring-boot-starter-undertow'
+    implementation ('org.springframework.boot:spring-boot-starter-web') {
+        exclude module: 'spring-boot-starter-tomcat'
+    }
+//    implementation ('org.springframework.boot:spring-boot-starter-data-rest'){ //rest API 자동완성
+//        exclude module: 'spring-boot-starter-tomcat'
+//    }
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    //mapstruct
+    implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+
+    //jwt
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+    implementation 'io.jsonwebtoken:jjwt-impl:0.12.3'
+    implementation 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+
+    //jpa history 테이블 자동생성
+    implementation 'org.springframework.data:spring-data-envers'
+
+    //test
+    testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
+    testImplementation 'com.epages:restdocs-api-spec-mockmvc:0.18.2'
+    swaggerUI 'org.webjars:swagger-ui:4.11.1'
+
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    outputs.dir snippetsDir
+    useJUnitPlatform()
+}
+
+tasks.named('asciidoctor') {
+    inputs.dir snippetsDir
+    dependsOn test
+}
+
+
+openapi3 {
+    servers = [
+            { url = "http://localhost:8080" }
+    ]
+    title = "여의도형님 API"
+    description = "여의도형님 API"
+    version = "1.0"
+    format = "yaml"
+    outputDirectory = "src/main/resources/static"
+    outputFileNamePrefix = "swagger"
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// 3.2. swaggerSources 설정 추가
+swaggerSources {
+    sample {
+        setInputFile(file("src/main/resources/static/swagger.yaml")) //기본값 : ${project.buildDir}/api-spec/openapi3.yaml
+    }
+}
+
+// 3.4. Task 및 설정 추가
+// GenerateSwaggerUI 태스크가, openapi3 task 를 의존하도록 설정
+tasks.withType(GenerateSwaggerUI) {
+    dependsOn 'openapi3'
+}
+
+// 생성된 SwaggerUI 를 jar 에 포함시키기 위해 build/resources 경로로 로 복사
+tasks.register('copySwaggerUI', Copy) {
+    dependsOn 'generateSwaggerUISample'
+
+    def generateSwaggerUISampleTask = tasks.named('generateSwaggerUISample', GenerateSwaggerUI).get()
+    from("${generateSwaggerUISampleTask.outputDir}")
+    into("src/main/resources/static/yh")
+
+    rename('index.html', 'swagger.html')
+}
+
+tasks.named('bootJar') {
+    configure {
+        dependsOn 'copySwaggerUI'
+    }
+}
